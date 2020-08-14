@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+	</head>
+	<body>
+	<input id="sendText" />
+	<button id="sendBtn">发送</button>
+	</body>
+	<script src="./main.js"></script>
+	<script>
+		const roomId = '123456';
+		const peerId = new Date().getTime();
+		const userClient = new UserClient({roomId,peerId});
+		userClient.join();
+		console.log('userClient',userClient)
+		const sendBtn = document.getElementById('sendBtn');
+		const sendText = document.getElementById('sendText');
+		sendBtn.onclick = ()=>{
+			userClient.sendMsg(sendText.value);
+		}
+	</script>
+</html>
