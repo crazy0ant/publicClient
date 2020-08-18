@@ -7,18 +7,29 @@
 	<body>
 	<input id="sendText" />
 	<button id="sendBtn">发送</button>
+	<video autoplay playsinline muted id="localVideo"></video>
+	<video autoplay playsinline muted id="remoteVideo"></video>
 	</body>
+	<script src="adapter-latest.js"></script>
 	<script src="./main.js"></script>
 	<script>
-		const roomId = '123456';
-		const peerId = new Date().getTime();
-		const userClient = new UserClient({roomId,peerId});
-		userClient.join();
-		console.log('userClient',userClient)
-		const sendBtn = document.getElementById('sendBtn');
-		const sendText = document.getElementById('sendText');
-		sendBtn.onclick = ()=>{
-			userClient.sendMsg(sendText.value);
+		function getQueryVariable(variable) {
+			var query = window.location.search.substring(1);
+			var vars = query.split("&");
+			for (var i = 0; i < vars.length; i++) {
+				var pair = vars[i].split("=");
+				if (pair[0] == variable) {
+					return pair[1];
+				}
+			}
+			return "";
 		}
+
+		var roomId = getQueryVariable('roomId');
+		if(roomId){
+			const userClient = new UserClient({roomId});
+			userClient.join();
+		}
+
 	</script>
 </html>

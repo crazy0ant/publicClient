@@ -14,7 +14,12 @@
     "webpack-cli": "^3.3.12"
   },
   "dependencies": {
+    "express": "^4.17.1",
+    "fs": "^0.0.1-security",
+    "https": "^1.0.0",
     "protoo-client": "^4.0.4",
-    "random-string": "^0.2.0"
+    "random-string": "^0.2.0",
+    "serve-index": "^1.9.1",
+    "webrtc-adapter": "^7.7.0"
   }
 }
