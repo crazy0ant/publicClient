@@ -1,5 +1,5 @@
 //let protooPort = 6001;
-let protooPort = 446;
+let protooPort = 4440;
 /* if (window.location.hostname === 'test.mediasoup.org')
 	protooPort = 4444;
  */
@@ -35,3 +35,4 @@ export const iceServer={
 *
 * */
 //urls: 'stun:stun.l.google.com:19302'
+//urls: 'stun:210.21.53.158:444'

@@ -1,11 +1,11 @@
 import {getProtooUrl,iceServer} from './urlFactory'
 import protooClient from "protoo-client";
 import randomString from 'random-string';
-//import adapter from 'webrtc-adapter';
+import adapter from 'webrtc-adapter';
 
 export default class MasterClient {
 
-    constructor({roomId}) {
+    constructor({roomId, maxBandWidth}) {
         this._roomId = roomId;
         this._peerId = randomString({length:8}).toLowerCase();
         this._protoo = null;
@@ -14,6 +14,7 @@ export default class MasterClient {
         this._isDisplayMedia = true;
         this._localStream = null;
         this._pcs = new Map();
+        this._maxBandWidth = maxBandWidth?maxBandWidth:1000;//默认1000kbps
         window.pcs = this._pcs;
     }
 
@@ -30,7 +31,7 @@ export default class MasterClient {
             this._joinRoom();
         });
         this._protoo.on('failed',()=>{
-            console.err('连接失败')
+            console.error('连接失败')
         });
         this._protoo.on('disconnected',()=>{
             console.log('连接已断开')
@@ -55,9 +56,10 @@ export default class MasterClient {
                 {
                     console.log('peerClosed')
                     const {peerId} = notification.data;
-                    const pc = this._pcs.get(peerId);
+                    let pc = this._pcs.get(peerId);
                     if(pc){
                         pc.close();
+                        pc = null;
                         this._pcs.delete(peerId);
                     }
 
@@ -71,8 +73,15 @@ export default class MasterClient {
                         {
                             //answer:message.data
                             const pc = this._pcs.get(peerId);
+                            const desc = message.data;
                             if(pc){
-                                pc.setRemoteDescription(message.data);
+
+                                pc.setRemoteDescription(desc).then(()=>{
+                                    setTimeout(()=>{
+                                        this._setMaxBandwidth(pc,this._maxBandWidth);
+                                    },1000)
+                                });
+
                             }
                             break
                         }
@@ -130,9 +139,9 @@ export default class MasterClient {
                         displaySurface: 'monitor',
                         logicalSurface: true,
                         cursor        : true,
-                        width         : {max: 1920},
-                        height        : {max:1080},
-                        frame         : {max:30}
+                        width         : {max: '1920'},
+                        height        : {max:'1080'},
+                        frameRate     : {max:20}
                     }
                 });
 
@@ -152,6 +161,16 @@ export default class MasterClient {
         try{
             //1.创建pc
             const pc = new RTCPeerConnection(iceServer);
+            //2.绑定track
+            this._localStream.getTracks().forEach(track=>pc.addTrack(track,this._localStream));
+
+
+
+
+            //3.创建desc
+            const offerDesc = await pc.createOffer({offerToReceiveAudio:1,offerToReceiveVideo:1});
+            console.log('offerDesc',offerDesc);
+            await pc.setLocalDescription(offerDesc);
             pc.onicecandidate= (event)=>{
                 console.log('onicecandidate',event)
                 if(event.candidate){
@@ -168,12 +187,7 @@ export default class MasterClient {
 
             }
 
-            //2.绑定track
-            this._localStream.getTracks().forEach(track=>pc.addTrack(track,this._localStream));
-            //3.创建desc
-            const offerDesc = await pc.createOffer({offerToReceiveAudio:1,offerToReceiveVideo:1});
-            console.log('offerDesc',offerDesc);
-            await pc.setLocalDescription(offerDesc);
+
             //4.发送offer,对方收到后调用pc.setRemote
             const message = {
                 type:'offer',
@@ -188,6 +202,38 @@ export default class MasterClient {
             console.error('createPeerConnection error',e)
         }
 
+    }
+    _setMaxBandwidth(pc,bandwidth){
+        pc.createOffer()
+            .then(offer => pc.setLocalDescription(offer))
+            .then(() => {
+                const desc = {
+                    type: pc.remoteDescription.type,
+                    sdp: this._updateBandwidthRestriction(pc.remoteDescription.sdp, bandwidth)
+                };
+                console.log('Applying bandwidth restriction to setRemoteDescription:\n' +
+                    desc.sdp);
+                return pc.setRemoteDescription(desc);
+            })
+            .then(() => {
+                console.log('limit bandwidth ok.')
+            })
+            .catch(()=>console.error('limit bandwidth err.'));
+    }
+    _updateBandwidthRestriction(sdp, bandwidth) {
+        let modifier = 'AS';
+        if (adapter.browserDetails.browser === 'firefox') {
+            //>>>无符号右移，大于0的数值位运算后结果不变，任何非数值变量做此运算都会变为0
+            bandwidth = (bandwidth >>> 0) * 1000;
+            modifier = 'TIAS';
+        }
+        if (sdp.indexOf('b=' + modifier + ':') === -1) {
+            // insert b= after c= line.
+            sdp = sdp.replace(/c=IN (.*)\r\n/, 'c=IN $1\r\nb=' + modifier + ':' + bandwidth + '\r\n');
+        } else {
+            sdp = sdp.replace(new RegExp('b=' + modifier + ':.*\r\n'), 'b=' + modifier + ':' + bandwidth + '\r\n');
+        }
+        return sdp;
     }
 
 }
