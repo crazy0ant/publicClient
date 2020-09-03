@@ -5,13 +5,13 @@ import adapter from 'webrtc-adapter';
 
 export default class MasterClient {
 
-    constructor({roomId, maxBandWidth}) {
+    constructor({roomId, maxBandWidth,isDisplayMedia}) {
         this._roomId = roomId;
         this._peerId = randomString({length:8}).toLowerCase();
         this._protoo = null;
         this._protooUrl = getProtooUrl({roomId, peerId:this._peerId});
         this._roomState = 'init'; //init connecting open closed
-        this._isDisplayMedia = true;
+        this._isDisplayMedia = isDisplayMedia===true?true:false;
         this._localStream = null;
         this._pcs = new Map();
         this._maxBandWidth = maxBandWidth?maxBandWidth:1000;//默认1000kbps
@@ -141,7 +141,7 @@ export default class MasterClient {
                         cursor        : true,
                         width         : {max: '1920'},
                         height        : {max:'1080'},
-                        frameRate     : {max:20}
+                        frameRate     : {max:15}
                     }
                 });
 
@@ -149,7 +149,11 @@ export default class MasterClient {
                 //使用摄像头
                 this._localStream = await navigator.mediaDevices.getUserMedia({
                     audio: false,
-                    video: true
+                    video: {
+                        width         : {max: '1920'},
+                        height        : {max:'1080'},
+                        frameRate     : {max:15}
+                    }
                 })
             }
         }catch (e) {
