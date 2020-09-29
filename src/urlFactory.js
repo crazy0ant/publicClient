@@ -19,13 +19,16 @@ export function getProtooUrl({ roomId, peerId, forceH264, forceVP9 })
 	return url;
 }
 
-export const iceServer={
+/*export const iceServer={
 	'iceServers':[
 		{
-			urls: 'stun:210.21.53.158:444'
+			urls: 'turn:210.21.53.158:444',
+			credential: '123456',
+			username: 'syo'
 		}
 	]
-}
+}*/
+
 /*
 * {
 			urls: 'turn:210.21.53.158:444',

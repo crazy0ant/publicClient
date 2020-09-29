@@ -1,11 +1,11 @@
-import {getProtooUrl,iceServer} from './urlFactory'
+import {getProtooUrl} from './urlFactory'
 import protooClient from "protoo-client";
 import randomString from 'random-string';
 import adapter from 'webrtc-adapter';
 
 export default class MasterClient {
 
-    constructor({roomId, maxBandWidth,isDisplayMedia}) {
+    constructor({roomId, maxBandWidth,isDisplayMedia,iceServer}) {
         this._roomId = roomId;
         this._peerId = randomString({length:8}).toLowerCase();
         this._protoo = null;
@@ -15,6 +15,7 @@ export default class MasterClient {
         this._localStream = null;
         this._pcs = new Map();
         this._maxBandWidth = maxBandWidth?maxBandWidth:1000;//默认1000kbps
+        this._iceServer = iceServer;
         window.pcs = this._pcs;
     }
 
@@ -164,17 +165,8 @@ export default class MasterClient {
     async createPeerConnection(peerId){
         try{
             //1.创建pc
-            const pc = new RTCPeerConnection(iceServer);
-            //2.绑定track
-            this._localStream.getTracks().forEach(track=>pc.addTrack(track,this._localStream));
-
-
-
-
-            //3.创建desc
-            const offerDesc = await pc.createOffer({offerToReceiveAudio:1,offerToReceiveVideo:1});
-            console.log('offerDesc',offerDesc);
-            await pc.setLocalDescription(offerDesc);
+            const pc = new RTCPeerConnection(this._iceServer);
+            //2.监听icecandidate
             pc.onicecandidate= (event)=>{
                 console.log('onicecandidate',event)
                 if(event.candidate){
@@ -190,6 +182,18 @@ export default class MasterClient {
                 }
 
             }
+
+            //2.绑定track
+            this._localStream.getTracks().forEach(track=>pc.addTrack(track,this._localStream));
+
+
+
+
+            //3.创建desc
+            const offerDesc = await pc.createOffer({offerToReceiveAudio:1,offerToReceiveVideo:1});
+            console.log('offerDesc',offerDesc);
+            await pc.setLocalDescription(offerDesc);
+
 
 
             //4.发送offer,对方收到后调用pc.setRemote

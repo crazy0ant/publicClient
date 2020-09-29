@@ -1,11 +1,11 @@
-import {getProtooUrl,iceServer} from './urlFactory'
+import {getProtooUrl} from './urlFactory'
 import protooClient from "protoo-client";
 import randomString from 'random-string';
 //import adapter from 'webrtc-adapter';
 
 export default class UserClient {
 
-    constructor({roomId,peerId}) {
+    constructor({roomId,peerId,iceServer}) {
         this._roomId = roomId;
         if(peerId){
             this._peerId = peerId;
@@ -17,6 +17,7 @@ export default class UserClient {
         this._protooUrl = getProtooUrl({roomId, peerId:this._peerId});
         this._roomState = 'init'; //init connecting open closed
         this.masterPeer = null;
+        this._iceServer = iceServer;
         //this.localStream = new MediaStream();
     }
 
@@ -113,22 +114,10 @@ export default class UserClient {
 
     async createPeerConnection(peerId,offer){
         //1.创建pc
-        const pc = new RTCPeerConnection(iceServer);
-        pc.ontrack=(e)=>{
-            const remoteVideo = document.getElementById('remoteVideo');
-            remoteVideo.srcObject = e.streams[0];
-        }
+        const pc = new RTCPeerConnection(this._iceServer);
 
-
-
-        //2.绑定track
-        //this.localStream.getTracks().forEach(track=>pc.addTrack(track,this.localStream));
-
-        await pc.setRemoteDescription(offer);
-        //3.创建desc前先设置remote
-        const answerDesc = await pc.createAnswer();
-        console.log('answerDesc',answerDesc);
-        await pc.setLocalDescription(answerDesc);
+        //2.监听
+        // 监听icecandidate
         pc.onicecandidate= (event)=>{
             console.log('onicecandidate',event)
             if(event.candidate){
@@ -142,8 +131,22 @@ export default class UserClient {
                     {peerId:peerId, message:message}
                 );
             }
-
         }
+        //监听ontrack
+        pc.ontrack=(e)=>{
+            const remoteVideo = document.getElementById('remoteVideo');
+            remoteVideo.srcObject = e.streams[0];
+        }
+
+        //2.绑定track
+        //this.localStream.getTracks().forEach(track=>pc.addTrack(track,this.localStream));
+
+        await pc.setRemoteDescription(offer);
+        //3.创建desc前先设置remote
+        const answerDesc = await pc.createAnswer();
+        console.log('answerDesc',answerDesc);
+        await pc.setLocalDescription(answerDesc);
+
         //4.发送answer,对方收到后调用pc.setRemote
         const message = {
             type:'answer',
